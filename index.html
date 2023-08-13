@@ -1,53 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html>
-    <head>
-        <meta charset="utf-8">
-        <title>WebGPU Game of Life</title>
-    </head>
-    <body>
-        <canvas width="512" height="512"></canvas>
-        <script type="module"> // o tipo "module" permite que usar aguardes de nível superior, o que é útil para a inicialização da WebGPU.
-            const canvas = document.querySelector("canvas")
+  <head>
+    <meta charset="utf-8">
+    <title>WebGPU Life</title>
+  </head>
+  <body>
+    <canvas width="512" height="512"></canvas>
+    <script type="module">
+      const canvas = document.querySelector("canvas");
 
-            // WebGPU code begins here
-            if (!navigator.gpu){
-                throw new Error("WebGPU not supported on this browser.");
-            }
-            
-            const adapter = await navigator.gpu.requestAdapter();
-            if (!adapter){
-                throw new Error("No appropriate GPUAdapter found.")
-            }
+      // First of all, let's check if the user's navigator supports WebGPU
+      if (!navigator.gpu){
+        throw new Error("WebGPU not supported on this browser :(");
+      }
 
-            const device = await adapter.requestDevice();
+      // Now, the first step in initializing WebGPU is to request a GPUAdapter.
+      // A GPUAdapter represents the user's GPU and serves as a bridge between the application 
+      // (which uses WebGPU) and the actual GPU in the user's device.
+      // It's like a guidebook or instruction manual that tells you how to communicate with the GPU.
+      // Note: We use "await" because the GPUAdapter may not be ready right away,
+      // so the application remains paused until it gets what it requested
+      const adapter = await navigator.gpu.requestAdapter(); // "Hey, can I have the GPUAdapter please?"
+      
+      if (!adapter){
+        throw new Error("No appropriate GPUAdapter found.");
+      }
 
-            const context = canvas.getContext("webgpu");
-            const canvasFormat = navigator.gpu.getPreferredCanvasFormat();
-            context.configure({
-                device: device,
-                format: canvasFormat,
-            });
+      // Now, the last step before working with GPU is to request a GPUDevice. 
+      // GPUDevice is like a controller or remote control that lets you directly interact with the GPU.
+      // It's the part of WebGPU that allows you to send commands directly to the GPU.
+      const device = await adapter.requestDevice();
 
-            const encoder = device.createCommandEncoder();
+      // Now we need to configure the canvas to be used with the device we created.
+      // The GPUCanvasContext allows the GPU to draw on the canvas. It's like setting up your paintbrush
+      // with the correct paint before you start painting. That is, we're telling the GPUDevice
+      // (the remote control) to use the GPUCanvasContext (the special paint).
+      const context = canvas.getContext("webgpu");
 
-            const pass = encoder.beginRenderPass({
-                colorAttachments: [{
-                    view: context.getCurrentTexture().createView(),
-                    loadOp: "clear",
-                    clearValue: { r: 0, g: 0.3, b: 0.4, a: 1 }, // New line
-                    storeOp: "store",
-                }]
-            });
+      //  "Hey, what kind of fuel (texture format) does this car (GPU) prefer?" 
+      const canvasFormat = navigator.gpu.getPreferredCanvasFormat(); 
 
-            pass.end();
+      // The context it returns must be associated with the device using the configure() method
+      // When we're setting up the GPUCanvasContext with the configure() method, there are 
+      // a few options we can provide. The most important ones are the device and the format.
+      context.configure({
+        device: device, // the GPUDevice you're using (the remote control for the GPU)
+        format: canvasFormat, // the texture format
+      });
 
-            const commandBuffer = encoder.finish();
-            device.queue.submit([commandBuffer]);
+      const encoder = device.createCommandEncoder();
 
-            // Finish the command buffer and immediately submit it.
-            device.queue.submit([encoder.finish()]);
+      const pass = encoder.beginRenderPass({
+        colorAttachments: [{
+          view: context.getCurrentTexture().createView(),
+          loadOp: "clear",
+          clearValue: {r: 0, g: 0.4, b: 0.4, a: 1},
+          storeOp: "store",
+        }]
+      });
+      pass.end();
 
-        </script>
-    </body>
+      const commandBuffer = encoder.finish();
+
+      device.queue.submit([commandBuffer]);
+
+
+    </script>
+  </body>
 </html>
